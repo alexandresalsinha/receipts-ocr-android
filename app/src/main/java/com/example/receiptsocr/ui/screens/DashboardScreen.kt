@@ -1,5 +1,6 @@
 package com.example.receiptsocr.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -40,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -76,7 +78,7 @@ val CATEGORY_COLORS = mapOf(
 
 val CATEGORIES = listOf("Groceries", "Food & Dining", "Travel", "Shopping", "Utilities", "Miscellaneous")
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
     viewModel: ReceiptViewModel,
@@ -91,6 +93,12 @@ fun DashboardScreen(
     val totalSpent = receipts.sumOf { it.totalAmount ?: 0.0 }
     val formatter = DecimalFormat("$#,##0.00")
     
+    // Group receipts by date, sorted by date descending
+    val receiptsByDay = remember(receipts) {
+        receipts.sortedByDescending { it.date ?: "" }
+            .groupBy { it.date ?: "Unknown Date" }
+    }
+
     // Category Breakdown for Chart
     val categoryBreakdown = remember(receipts) {
         val breakdown = mutableMapOf<String, Double>()
@@ -289,12 +297,28 @@ fun DashboardScreen(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(receipts, key = { it.id }) { receipt ->
-                        ReceiptItemRow(
-                            receipt = receipt,
-                            onClick = { onReceiptClick(receipt) },
-                            onDelete = { viewModel.deleteReceipt(receipt) }
-                        )
+                    receiptsByDay.forEach { (date, dayReceipts) ->
+                        stickyHeader {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                            ) {
+                                Text(
+                                    text = date,
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        items(dayReceipts, key = { it.id }) { receipt ->
+                            ReceiptItemRow(
+                                receipt = receipt,
+                                onClick = { onReceiptClick(receipt) },
+                                onDelete = { viewModel.deleteReceipt(receipt) }
+                            )
+                        }
                     }
                     item {
                         Spacer(modifier = Modifier.height(80.dp)) // Avoid covering by FAB
