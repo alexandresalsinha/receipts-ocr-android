@@ -32,7 +32,7 @@ class ReceiptParserTest {
         val receipt = ReceiptParser.parse(ocrText)
 
         assertEquals("STARBUCKS COFFEE 1234", receipt.merchantName)
-        assertEquals("2026-07-08", receipt.date)
+        assertEquals("08/07/2026", receipt.date)
         assertEquals(8.98, receipt.totalAmount ?: 0.0, 0.001)
         assertEquals("Food & Dining", receipt.category)
     }

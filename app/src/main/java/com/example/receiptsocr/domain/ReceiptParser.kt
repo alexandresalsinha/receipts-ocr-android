@@ -4,17 +4,11 @@ import com.example.receiptsocr.data.model.ReceiptEntity
 import com.example.receiptsocr.data.model.ReceiptItem
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.util.Locale
-import java.util.UUID
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.regex.Pattern
 
 object ReceiptParser {
-
-    private val DATE_PATTERNS = listOf(
-        Pattern.compile("\\b(\\d{4})[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\\d|3[01])\\b"), // YYYY-MM-DD
-        Pattern.compile("\\b(0[1-9]|[12]\\d|3[01])[-/.](0[1-9]|1[0-2])[-/.](19|20)?(\\d{2})\\b"), // DD-MM-YY/YYYY
-        Pattern.compile("\\b(0[1-9]|1[0-2])[-/.](0[1-9]|[12]\\d|3[01])[-/.](19|20)?(\\d{2})\\b")  // MM-DD-YY/YYYY
-    )
 
     private val PRICE_PATTERN = Pattern.compile("[-+]?\\d+([.,])\\d{2}\\b")
 
@@ -94,15 +88,39 @@ object ReceiptParser {
     }
 
     private fun extractDate(rawText: String): String {
-        for (pattern in DATE_PATTERNS) {
-            val matcher = pattern.matcher(rawText)
-            if (matcher.find()) {
-                return matcher.group(0) ?: ""
-            }
+        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.US)
+        val today = dateFormat.format(Date())
+
+        // YYYY-MM-DD
+        val pattern1 = Pattern.compile("\\b(\\d{4})[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\\d|3[01])\\b")
+        val matcher1 = pattern1.matcher(rawText)
+        if (matcher1.find()) {
+            return "${matcher1.group(3)}/${matcher1.group(2)}/${matcher1.group(1)}"
         }
-        
-        // Return current date format placeholder or empty if not found
-        return ""
+
+        // DD-MM-YY/YYYY
+        val pattern2 = Pattern.compile("\\b(0[1-9]|[12]\\d|3[01])[-/.](0[1-9]|1[0-2])[-/.](19|20)?(\\d{2})\\b")
+        val matcher2 = pattern2.matcher(rawText)
+        if (matcher2.find()) {
+            val day = matcher2.group(1)
+            val month = matcher2.group(2)
+            val century = matcher2.group(3) ?: "20"
+            val year = matcher2.group(4)
+            return "$day/$month/$century$year"
+        }
+
+        // MM-DD-YY/YYYY
+        val pattern3 = Pattern.compile("\\b(0[1-9]|1[0-2])[-/.](0[1-9]|[12]\\d|3[01])[-/.](19|20)?(\\d{2})\\b")
+        val matcher3 = pattern3.matcher(rawText)
+        if (matcher3.find()) {
+            val month = matcher3.group(1)
+            val day = matcher3.group(2)
+            val century = matcher3.group(3) ?: "20"
+            val year = matcher3.group(4)
+            return "$day/$month/$century$year"
+        }
+
+        return today
     }
 
     private fun extractAllPrices(rawText: String): List<Double> {

@@ -15,7 +15,9 @@ class MainScreenTest {
 
   @Before
   fun setup() {
-    val receiptsByDay = FAKE_RECEIPTS.groupBy { it.date ?: "Unknown Date" }
+    val receiptsByDay = FAKE_RECEIPTS
+        .sortedByDescending { getSortableDate(it.date) }
+        .groupBy { it.date ?: "Unknown Date" }
     composeTestRule.setContent {
       MainScreen(
           receiptsByDay = receiptsByDay,
@@ -33,11 +35,21 @@ class MainScreenTest {
   }
 }
 
+fun getSortableDate(dateStr: String?): String {
+    if (dateStr.isNullOrEmpty()) return ""
+    val parts = dateStr.split("/")
+    return if (parts.size == 3) {
+        "${parts[2]}${parts[1]}${parts[0]}"
+    } else {
+        dateStr.replace("-", "")
+    }
+}
+
 private val FAKE_RECEIPTS = listOf(
     ReceiptEntity(
         id = "1",
         merchantName = "Starbucks",
-        date = "2023-10-01",
+        date = "01/10/2023",
         totalAmount = 5.50,
         category = "Food",
         itemsJson = "[]",
@@ -47,7 +59,7 @@ private val FAKE_RECEIPTS = listOf(
     ReceiptEntity(
         id = "2",
         merchantName = "Walmart",
-        date = "2023-10-01",
+        date = "01/10/2023",
         totalAmount = 42.15,
         category = "Groceries",
         itemsJson = "[]",
@@ -57,7 +69,7 @@ private val FAKE_RECEIPTS = listOf(
     ReceiptEntity(
         id = "3",
         merchantName = "Shell",
-        date = "2023-10-02",
+        date = "02/10/2023",
         totalAmount = 50.00,
         category = "Fuel",
         itemsJson = "[]",

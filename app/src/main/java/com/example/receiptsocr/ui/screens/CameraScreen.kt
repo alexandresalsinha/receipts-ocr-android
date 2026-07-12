@@ -437,7 +437,6 @@ private fun getMockReceiptText(): String {
             PAID WITH DEBIT CARD
             CHANGE DUE             $0.00
             
-            DATE: 2026-07-08 18:24
             THANK YOU FOR SHOPPING WITH US!
         """.trimIndent(),
         """
@@ -454,8 +453,6 @@ private fun getMockReceiptText(): String {
             
             CASH TENDERED          $20.00
             CHANGE RETURNED        $3.36
-            
-            04/22/2026  12:44
         """.trimIndent(),
         """
             YELLOW CAB CO.
@@ -469,7 +466,6 @@ private fun getMockReceiptText(): String {
             
             CHARGE TO VISA ***********4829
             
-            DATE: 2026-06-15
             DRIVE SAFE!
         """.trimIndent(),
         """
@@ -484,8 +480,6 @@ private fun getMockReceiptText(): String {
             TOTAL DUE              $113.38
             
             PAID: DEBIT CARD
-            
-            DATE: 2026-07-01
         """.trimIndent()
     )
     

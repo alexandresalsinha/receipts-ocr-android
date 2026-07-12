@@ -65,6 +65,8 @@ import androidx.compose.ui.unit.sp
 import com.example.receiptsocr.data.model.ReceiptEntity
 import com.example.receiptsocr.ui.viewmodel.ReceiptViewModel
 import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 // Category configurations
 val CATEGORY_COLORS = mapOf(
@@ -77,6 +79,18 @@ val CATEGORY_COLORS = mapOf(
 )
 
 val CATEGORIES = listOf("Groceries", "Food & Dining", "Travel", "Shopping", "Utilities", "Miscellaneous")
+
+fun getSortableDate(dateStr: String?): String {
+    if (dateStr.isNullOrEmpty()) return ""
+    val parts = dateStr.split("/")
+    return if (parts.size == 3) {
+        // DD/MM/YYYY -> YYYYMMDD
+        "${parts[2]}${parts[1]}${parts[0]}"
+    } else {
+        // Fallback for YYYY-MM-DD or other formats
+        dateStr.replace("-", "")
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -95,7 +109,7 @@ fun DashboardScreen(
     
     // Group receipts by date, sorted by date descending
     val receiptsByDay = remember(receipts) {
-        receipts.sortedByDescending { it.date ?: "" }
+        receipts.sortedByDescending { getSortableDate(it.date) }
             .groupBy { it.date ?: "Unknown Date" }
     }
 

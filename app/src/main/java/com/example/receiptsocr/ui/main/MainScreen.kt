@@ -16,6 +16,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.receiptsocr.data.model.ReceiptEntity
+import java.text.SimpleDateFormat
+import java.util.*
+
+fun getSortableDate(dateStr: String?): String {
+    if (dateStr.isNullOrEmpty()) return ""
+    val parts = dateStr.split("/")
+    return if (parts.size == 3) {
+        "${parts[2]}${parts[1]}${parts[0]}"
+    } else {
+        dateStr.replace("-", "")
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
