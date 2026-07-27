@@ -188,7 +188,7 @@ fun DetailScreen(
             OutlinedTextField(
                 value = receipt.date ?: "",
                 onValueChange = { viewModel.updateActiveReceiptDate(it) },
-                label = { Text("Purchase Date (e.g. YYYY-MM-DD)") },
+                label = { Text("Purchase Date (e.g. DD/MM/YYYY)") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
