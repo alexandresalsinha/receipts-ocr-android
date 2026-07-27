@@ -106,6 +106,12 @@ fun DashboardScreen(
     
     val totalSpent = receipts.sumOf { it.totalAmount ?: 0.0 }
     val formatter = DecimalFormat("$#,##0.00")
+
+    // Today's total (dates are stored as DD/MM/YYYY)
+    val today = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(java.util.Date()) }
+    val todayTotal = receipts
+        .filter { it.date == today }
+        .sumOf { it.totalAmount ?: 0.0 }
     
     // Group receipts by date, sorted by date descending
     val receiptsByDay = remember(receipts) {
@@ -187,6 +193,19 @@ fun DashboardScreen(
                             text = formatter.format(totalSpent),
                             fontSize = 32.sp,
                             fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Today's Spending",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = formatter.format(todayTotal),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.height(4.dp))
