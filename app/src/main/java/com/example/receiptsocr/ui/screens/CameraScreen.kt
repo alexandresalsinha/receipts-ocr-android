@@ -7,6 +7,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -65,6 +66,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -132,6 +135,11 @@ fun CameraScreen(
     val previewView = remember { PreviewView(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
+    // Torch (flashlight) state
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    var hasFlashUnit by remember { mutableStateOf(false) }
+    var torchEnabled by remember { mutableStateOf(false) }
+
     LaunchedEffect(hasCameraPermission) {
         if (hasCameraPermission) {
             val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -139,18 +147,25 @@ fun CameraScreen(
                 val cameraProvider = cameraProviderFuture.get()
                 try {
                     cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
+                    val boundCamera = cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         cameraSelector,
                         preview,
                         imageCapture
                     )
                     preview.setSurfaceProvider(previewView.surfaceProvider)
+                    camera = boundCamera
+                    hasFlashUnit = boundCamera.cameraInfo.hasFlashUnit()
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
             }, ContextCompat.getMainExecutor(context))
         }
+    }
+
+    // Apply torch state whenever it changes or the camera is (re)bound
+    LaunchedEffect(camera, torchEnabled) {
+        camera?.cameraControl?.enableTorch(torchEnabled)
     }
 
     Scaffold(
@@ -160,6 +175,31 @@ fun CameraScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (hasCameraPermission && hasFlashUnit) {
+                        val torchLabel = if (torchEnabled) "Turn flashlight off" else "Turn flashlight on"
+                        IconButton(
+                            onClick = { torchEnabled = !torchEnabled },
+                            modifier = Modifier.semantics { contentDescription = torchLabel }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (torchEnabled) Color(0xFFFFC107) else Color.White.copy(alpha = 0.15f)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "⚡",
+                                    fontSize = 18.sp,
+                                    color = if (torchEnabled) Color.Black else Color.White
+                                )
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
