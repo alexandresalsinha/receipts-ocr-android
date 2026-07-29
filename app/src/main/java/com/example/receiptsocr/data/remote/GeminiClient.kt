@@ -3,6 +3,7 @@ package com.example.receiptsocr.data.remote
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
+import com.example.receiptsocr.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -41,13 +42,14 @@ data class ReceiptExtraction(
  * Sends a receipt photo to Google's Gemini vision model and asks it to return the
  * merchant name and total price. Uses the Generative Language API (generateContent).
  *
- * NOTE: The API key is embedded in the client as requested. Anything shipped in an APK can be
- * extracted, so for a production release this key should be proxied through a backend rather
- * than bundled with the app, and ideally restricted to this app's package + signing key.
+ * NOTE: The API key is injected from local.properties via BuildConfig (kept out of git). It is
+ * still compiled into the APK, and anything shipped in an APK can be extracted, so for a
+ * production release this key should be proxied through a backend rather than bundled with the
+ * app, and ideally restricted to this app's package + signing key in Google Cloud Console.
  */
 object GeminiClient {
 
-    private const val API_KEY = "AIzaSyCXe3r1ia-hwT1uEXul-CKu3Ity4qDpB28"
+    private val API_KEY = BuildConfig.GEMINI_API_KEY
     private const val MODEL = "gemini-2.5-flash"
     private const val ENDPOINT =
         "https://generativelanguage.googleapis.com/v1beta/models/$MODEL:generateContent"
@@ -68,6 +70,9 @@ object GeminiClient {
      * @throws IOException on network/HTTP failure or an unparseable response.
      */
     suspend fun extractReceipt(imageBytes: ByteArray): ReceiptExtraction = withContext(Dispatchers.IO) {
+        if (API_KEY.isBlank()) {
+            throw IOException("Missing Gemini API key. Add GEMINI_API_KEY to local.properties and rebuild.")
+        }
         val base64Image = encodeScaledJpeg(imageBytes)
         val requestBody = buildRequestBody(base64Image)
 
