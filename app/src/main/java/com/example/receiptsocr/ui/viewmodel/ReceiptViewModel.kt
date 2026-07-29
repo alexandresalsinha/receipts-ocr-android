@@ -7,11 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.receiptsocr.data.DataRepository
 import com.example.receiptsocr.data.model.ReceiptEntity
-import com.example.receiptsocr.data.model.ReceiptItem
-import com.example.receiptsocr.domain.ReceiptParser
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.example.receiptsocr.data.remote.GeminiClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +16,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 class ReceiptViewModel(private val repository: DataRepository) : ViewModel() {
@@ -108,48 +107,51 @@ class ReceiptViewModel(private val repository: DataRepository) : ViewModel() {
     fun processImageUri(context: Context, uri: Uri) {
         isProcessing.value = true
         ocrError.value = null
-        
+
         viewModelScope.launch {
             try {
-                // Copy image to app local storage to persist it
-                val persistedImagePath = copyImageToInternalStorage(context, uri)
-                
-                val image = InputImage.fromFilePath(context, uri)
-                val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-                
-                recognizer.process(image)
-                    .addOnSuccessListener { visionText ->
-                        val text = visionText.text
-                        if (text.trim().isEmpty()) {
-                            ocrError.value = "No text could be recognized in the image. Please try again with a clearer picture."
-                            isProcessing.value = false
-                        } else {
-                            val parsed = ReceiptParser.parse(text, persistedImagePath)
-                            activeReceipt.value = parsed
-                            isProcessing.value = false
-                        }
-                    }
-                    .addOnFailureListener { e ->
-                        ocrError.value = "OCR Failed: ${e.localizedMessage ?: "Unknown error"}"
-                        isProcessing.value = false
-                    }
+                // Read the image bytes and copy it to app local storage so it can be displayed later.
+                val imageBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (imageBytes == null || imageBytes.isEmpty()) {
+                    ocrError.value = "Failed to load the selected image. Please try again."
+                    isProcessing.value = false
+                    return@launch
+                }
+
+                val persistedImagePath = copyImageToInternalStorage(context, imageBytes)
+
+                // Send the photo to the Gemini vision model and ask it to read the receipt.
+                val extraction = GeminiClient.extractReceipt(imageBytes)
+
+                activeReceipt.value = ReceiptEntity(
+                    id = UUID.randomUUID().toString(),
+                    merchantName = extraction.merchantName ?: "Unknown Merchant",
+                    date = extraction.date ?: todayFormatted(),
+                    totalAmount = extraction.totalAmount,
+                    category = extraction.category ?: "Miscellaneous",
+                    itemsJson = "[]",
+                    rawText = extraction.rawResponse,
+                    imagePath = persistedImagePath,
+                    timestamp = System.currentTimeMillis()
+                )
+                isProcessing.value = false
             } catch (e: Exception) {
-                ocrError.value = "Failed to load image: ${e.localizedMessage ?: "Unknown error"}"
+                ocrError.value = "Could not read the receipt: ${e.localizedMessage ?: "Unknown error"}"
                 isProcessing.value = false
             }
         }
     }
 
-    private fun copyImageToInternalStorage(context: Context, uri: Uri): String? {
+    private fun todayFormatted(): String {
+        return SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date())
+    }
+
+    private fun copyImageToInternalStorage(context: Context, imageBytes: ByteArray): String? {
         return try {
-            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
             val fileName = "receipt_${UUID.randomUUID()}.jpg"
             val file = File(context.filesDir, fileName)
-            val outputStream = FileOutputStream(file)
-            inputStream.use { input ->
-                outputStream.use { output ->
-                    input.copyTo(output)
-                }
+            FileOutputStream(file).use { output ->
+                output.write(imageBytes)
             }
             file.absolutePath
         } catch (e: Exception) {

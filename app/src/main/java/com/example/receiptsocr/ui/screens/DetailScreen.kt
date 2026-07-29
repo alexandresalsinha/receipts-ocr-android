@@ -251,7 +251,7 @@ fun DetailScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Show OCR Raw Text", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Show AI Response", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                         Icon(
                             imageVector = if (rawTextExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,

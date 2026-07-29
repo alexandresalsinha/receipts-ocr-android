@@ -415,7 +415,7 @@ fun CameraScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                         Text("Reading Receipt...", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("On-device OCR is processing your receipt text", color = Color.LightGray, fontSize = 12.sp)
+                        Text("Gemini AI is analyzing your receipt photo", color = Color.LightGray, fontSize = 12.sp)
                     }
                 }
             }

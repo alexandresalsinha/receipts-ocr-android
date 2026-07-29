@@ -83,9 +83,6 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
-  // ML Kit Text Recognition
-  implementation(libs.mlkit.text.recognition)
-
   // CameraX
   implementation(libs.androidx.camera.camera2)
   implementation(libs.androidx.camera.lifecycle)
