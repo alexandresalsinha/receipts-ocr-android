@@ -11,7 +11,7 @@ data class ReceiptEntity(
     val merchantName: String?,
     val date: String?,
     val totalAmount: Double?,
-    val currency: String = "$",
+    val currency: String = "€",
     val category: String,
     val itemsJson: String, // JSON serialized list of ReceiptItem
     val rawText: String,

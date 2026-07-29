@@ -105,7 +105,7 @@ fun DashboardScreen(
     val selectedCategory by viewModel.selectedCategoryFilter.collectAsState()
     
     val totalSpent = receipts.sumOf { it.totalAmount ?: 0.0 }
-    val formatter = DecimalFormat("$#,##0.00")
+    val formatter = DecimalFormat("€#,##0.00")
 
     // Today's total (dates are stored as DD/MM/YYYY)
     val today = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(java.util.Date()) }
@@ -413,7 +413,7 @@ fun ReceiptItemRow(
     onDelete: () -> Unit
 ) {
     val categoryColor = CATEGORY_COLORS[receipt.category] ?: Color.Gray
-    val formatter = DecimalFormat("$#,##0.00")
+    val formatter = DecimalFormat("€#,##0.00")
     
     Card(
         modifier = Modifier
@@ -475,7 +475,7 @@ fun ReceiptItemRow(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = receipt.totalAmount?.let { formatter.format(it) } ?: "$0.00",
+                    text = receipt.totalAmount?.let { formatter.format(it) } ?: "€0.00",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
