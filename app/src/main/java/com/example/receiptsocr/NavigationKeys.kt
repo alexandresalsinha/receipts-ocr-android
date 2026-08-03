@@ -6,3 +6,4 @@ import kotlinx.serialization.Serializable
 @Serializable data object Dashboard : NavKey
 @Serializable data object Camera : NavKey
 @Serializable data object Detail : NavKey
+@Serializable data object Calendar : NavKey

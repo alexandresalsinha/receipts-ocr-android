@@ -32,6 +32,10 @@ class ReceiptViewModel(private val repository: DataRepository) : ViewModel() {
     // The currently active receipt being edited / reviewed
     val activeReceipt = MutableStateFlow<ReceiptEntity?>(null)
 
+    // Unfiltered list of all receipts (used by the calendar day view)
+    val allReceipts: StateFlow<List<ReceiptEntity>> = repository.receipts
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Combined list of receipts filtered by search query and category
     val receipts: StateFlow<List<ReceiptEntity>> = combine(
         repository.receipts,

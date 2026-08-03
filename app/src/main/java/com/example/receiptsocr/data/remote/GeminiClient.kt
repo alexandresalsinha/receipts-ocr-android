@@ -60,7 +60,8 @@ object GeminiClient {
     private const val TIMEOUT_MS = 60_000
 
     private val VALID_CATEGORIES = listOf(
-        "Groceries", "Food & Dining", "Travel", "Shopping", "Utilities", "Miscellaneous"
+        "Groceries", "Food & Dining", "Travel", "Shopping", "Utilities",
+        "Fuel", "Health", "Entertainment", "Electronics", "Clothing", "Home", "Miscellaneous"
     )
 
     private val json = Json { ignoreUnknownKeys = true }

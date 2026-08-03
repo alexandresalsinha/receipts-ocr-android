@@ -9,6 +9,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.receiptsocr.data.DefaultDataRepository
 import com.example.receiptsocr.data.db.ReceiptDatabase
+import com.example.receiptsocr.ui.screens.CalendarScreen
 import com.example.receiptsocr.ui.screens.CameraScreen
 import com.example.receiptsocr.ui.screens.DashboardScreen
 import com.example.receiptsocr.ui.screens.DetailScreen
@@ -37,6 +38,17 @@ fun MainNavigation() {
                 DashboardScreen(
                     viewModel = receiptViewModel,
                     onScanClick = { backStack.add(Camera) },
+                    onCalendarClick = { backStack.add(Calendar) },
+                    onReceiptClick = { receipt ->
+                        receiptViewModel.setActiveReceipt(receipt)
+                        backStack.add(Detail)
+                    }
+                )
+            }
+            entry<Calendar> {
+                CalendarScreen(
+                    viewModel = receiptViewModel,
+                    onBackClick = { backStack.removeLastOrNull() },
                     onReceiptClick = { receipt ->
                         receiptViewModel.setActiveReceipt(receipt)
                         backStack.add(Detail)

@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
@@ -75,10 +76,16 @@ val CATEGORY_COLORS = mapOf(
     "Travel" to Color(0xFF2196F3),
     "Shopping" to Color(0xFF9C27B0),
     "Utilities" to Color(0xFF009688),
+    "Fuel" to Color(0xFFFF9800),
+    "Health" to Color(0xFFE91E63),
+    "Entertainment" to Color(0xFF673AB7),
+    "Electronics" to Color(0xFF3F51B5),
+    "Clothing" to Color(0xFF795548),
+    "Home" to Color(0xFF827717),
     "Miscellaneous" to Color(0xFF757575)
 )
 
-val CATEGORIES = listOf("Groceries", "Food & Dining", "Travel", "Shopping", "Utilities", "Miscellaneous")
+val CATEGORIES = CATEGORY_COLORS.keys.toList()
 
 fun getSortableDate(dateStr: String?): String {
     if (dateStr.isNullOrEmpty()) return ""
@@ -97,6 +104,7 @@ fun getSortableDate(dateStr: String?): String {
 fun DashboardScreen(
     viewModel: ReceiptViewModel,
     onScanClick: () -> Unit,
+    onCalendarClick: () -> Unit,
     onReceiptClick: (ReceiptEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -156,13 +164,27 @@ fun DashboardScreen(
                 )
         ) {
             // Header Area
-            Text(
-                text = "Receipts Tracker",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Receipts Tracker",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                IconButton(onClick = onCalendarClick) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Browse receipts by day",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             // Spent Summary Card
             Card(
