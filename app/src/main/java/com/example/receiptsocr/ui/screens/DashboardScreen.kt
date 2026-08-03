@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
@@ -97,6 +98,7 @@ fun getSortableDate(dateStr: String?): String {
 fun DashboardScreen(
     viewModel: ReceiptViewModel,
     onScanClick: () -> Unit,
+    onCalendarClick: () -> Unit,
     onReceiptClick: (ReceiptEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -156,13 +158,27 @@ fun DashboardScreen(
                 )
         ) {
             // Header Area
-            Text(
-                text = "Receipts Tracker",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Receipts Tracker",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                IconButton(onClick = onCalendarClick) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Browse receipts by day",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             // Spent Summary Card
             Card(
