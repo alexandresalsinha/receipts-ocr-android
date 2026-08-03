@@ -76,10 +76,16 @@ val CATEGORY_COLORS = mapOf(
     "Travel" to Color(0xFF2196F3),
     "Shopping" to Color(0xFF9C27B0),
     "Utilities" to Color(0xFF009688),
+    "Fuel" to Color(0xFFFF9800),
+    "Health" to Color(0xFFE91E63),
+    "Entertainment" to Color(0xFF673AB7),
+    "Electronics" to Color(0xFF3F51B5),
+    "Clothing" to Color(0xFF795548),
+    "Home" to Color(0xFF827717),
     "Miscellaneous" to Color(0xFF757575)
 )
 
-val CATEGORIES = listOf("Groceries", "Food & Dining", "Travel", "Shopping", "Utilities", "Miscellaneous")
+val CATEGORIES = CATEGORY_COLORS.keys.toList()
 
 fun getSortableDate(dateStr: String?): String {
     if (dateStr.isNullOrEmpty()) return ""
