@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.receiptsocr.data.DataRepository
 import com.example.receiptsocr.data.model.ReceiptEntity
 import com.example.receiptsocr.data.remote.GeminiClient
+import com.example.receiptsocr.util.normalizeReceiptDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -130,7 +131,7 @@ class ReceiptViewModel(private val repository: DataRepository) : ViewModel() {
                 activeReceipt.value = ReceiptEntity(
                     id = UUID.randomUUID().toString(),
                     merchantName = extraction.merchantName ?: "Unknown Merchant",
-                    date = extraction.date ?: todayFormatted(),
+                    date = normalizeReceiptDate(extraction.date) ?: todayFormatted(),
                     totalAmount = extraction.totalAmount,
                     category = extraction.category ?: "Miscellaneous",
                     itemsJson = "[]",

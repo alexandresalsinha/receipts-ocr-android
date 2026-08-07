@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.receiptsocr.data.model.ReceiptEntity
 import com.example.receiptsocr.ui.viewmodel.ReceiptViewModel
+import com.example.receiptsocr.util.normalizeReceiptDate
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -87,18 +88,6 @@ val CATEGORY_COLORS = mapOf(
 
 val CATEGORIES = CATEGORY_COLORS.keys.toList()
 
-fun getSortableDate(dateStr: String?): String {
-    if (dateStr.isNullOrEmpty()) return ""
-    val parts = dateStr.split("/")
-    return if (parts.size == 3) {
-        // DD/MM/YYYY -> YYYYMMDD
-        "${parts[2]}${parts[1]}${parts[0]}"
-    } else {
-        // Fallback for YYYY-MM-DD or other formats
-        dateStr.replace("-", "")
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
@@ -118,13 +107,16 @@ fun DashboardScreen(
     // Today's total (dates are stored as DD/MM/YYYY)
     val today = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(java.util.Date()) }
     val todayTotal = receipts
-        .filter { it.date == today }
+        .filter { normalizeReceiptDate(it.date) == today }
         .sumOf { it.totalAmount ?: 0.0 }
-    
-    // Group receipts by date, sorted by date descending
+
+    // Group receipts by day. Ordering is by when each receipt was added (timestamp):
+    // sorting first means groupBy keeps day-groups in most-recently-added order, and the
+    // receipts within a day stay newest-first — so a freshly added receipt is always at the top,
+    // even if its printed date is old or was misread by the OCR.
     val receiptsByDay = remember(receipts) {
-        receipts.sortedByDescending { getSortableDate(it.date) }
-            .groupBy { it.date ?: "Unknown Date" }
+        receipts.sortedByDescending { it.timestamp }
+            .groupBy { normalizeReceiptDate(it.date) ?: "Unknown Date" }
     }
 
     // Category Breakdown for Chart
