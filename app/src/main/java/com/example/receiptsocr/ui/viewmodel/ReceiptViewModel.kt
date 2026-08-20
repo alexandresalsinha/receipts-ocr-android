@@ -9,6 +9,8 @@ import com.example.receiptsocr.data.DataRepository
 import com.example.receiptsocr.data.model.ReceiptEntity
 import com.example.receiptsocr.data.remote.GeminiClient
 import com.example.receiptsocr.util.normalizeReceiptDate
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -134,7 +136,7 @@ class ReceiptViewModel(private val repository: DataRepository) : ViewModel() {
                     date = normalizeReceiptDate(extraction.date) ?: todayFormatted(),
                     totalAmount = extraction.totalAmount,
                     category = extraction.category ?: "Miscellaneous",
-                    itemsJson = "[]",
+                    itemsJson = Json.encodeToString(extraction.items),
                     rawText = extraction.rawResponse,
                     imagePath = persistedImagePath,
                     timestamp = System.currentTimeMillis()

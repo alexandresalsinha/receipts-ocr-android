@@ -4,9 +4,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import com.example.receiptsocr.BuildConfig
+import com.example.receiptsocr.data.model.ReceiptItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -29,12 +31,14 @@ import java.net.URL
  * Result of asking the vision model to read a receipt photo.
  * [merchantName] and [totalAmount] are the primary fields requested from the model;
  * [date] and [category] are extra hints used to pre-fill the review screen.
+ * [items] are the individual products/line items detected on the receipt.
  */
 data class ReceiptExtraction(
     val merchantName: String?,
     val totalAmount: Double?,
     val date: String?,
     val category: String?,
+    val items: List<ReceiptItem>,
     val rawResponse: String
 )
 
@@ -110,7 +114,11 @@ object GeminiClient {
             append("- \"merchantName\": the store or business name (string, or null if unreadable)\n")
             append("- \"totalAmount\": the final total amount paid as a plain number without a currency symbol, or null\n")
             append("- \"date\": the purchase date formatted as DD/MM/YYYY, or null if not visible\n")
-            append("- \"category\": one of ${VALID_CATEGORIES.joinToString(", ")}")
+            append("- \"category\": one of ${VALID_CATEGORIES.joinToString(", ")}\n")
+            append("- \"items\": an array of the individual products purchased, each an object with ")
+            append("\"name\" (the product description as a string) and \"price\" (that line's amount as a ")
+            append("plain number without a currency symbol, or null if unreadable). Exclude subtotals, ")
+            append("taxes, discounts, totals and payment lines. Use an empty array if no items are legible.")
         }
 
         val body: JsonObject = buildJsonObject {
@@ -166,8 +174,20 @@ object GeminiClient {
             totalAmount = extracted["totalAmount"]?.let { readNumber(it) },
             date = extracted["date"]?.jsonPrimitive?.contentOrNullSafe()?.takeIf { it.isNotBlank() },
             category = category,
+            items = parseItems(extracted["items"]),
             rawResponse = cleaned
         )
+    }
+
+    private fun parseItems(element: JsonElement?): List<ReceiptItem> {
+        val array = (element as? JsonArray) ?: return emptyList()
+        return array.mapNotNull { entry ->
+            val obj = entry as? JsonObject ?: return@mapNotNull null
+            val name = obj["name"]?.jsonPrimitive?.contentOrNullSafe()?.trim()?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            val price = obj["price"]?.let { readNumber(it) } ?: 0.0
+            ReceiptItem(name = name, price = price)
+        }
     }
 
     private fun readNumber(element: JsonElement): Double? {
