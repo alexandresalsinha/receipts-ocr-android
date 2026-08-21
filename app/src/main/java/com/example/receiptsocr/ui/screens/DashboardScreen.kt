@@ -101,7 +101,6 @@ fun DashboardScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCategory by viewModel.selectedCategoryFilter.collectAsState()
     
-    val totalSpent = receipts.sumOf { it.totalAmount ?: 0.0 }
     val formatter = DecimalFormat("€#,##0.00")
 
     // Today's total (dates are stored as DD/MM/YYYY)
@@ -109,6 +108,20 @@ fun DashboardScreen(
     val todayTotal = receipts
         .filter { normalizeReceiptDate(it.date) == today }
         .sumOf { it.totalAmount ?: 0.0 }
+
+    // Current month total. Normalized dates are dd/MM/yyyy, so the month key is MM/yyyy.
+    val currentMonthKey = remember { SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(java.util.Date()) }
+    val monthReceipts = receipts.filter { monthKeyOf(normalizeReceiptDate(it.date)) == currentMonthKey }
+    val monthTotal = monthReceipts.sumOf { it.totalAmount ?: 0.0 }
+
+    // Totals per month, most recent first, for the "Monthly Totals" section.
+    val monthlyTotals = remember(receipts) {
+        receipts
+            .mapNotNull { r -> monthKeyOf(normalizeReceiptDate(r.date))?.let { it to (r.totalAmount ?: 0.0) } }
+            .groupBy({ it.first }, { it.second })
+            .map { (month, amounts) -> month to amounts.sum() }
+            .sortedByDescending { (month, _) -> monthSortValue(month) }
+    }
 
     // Group receipts by day. Ordering is by when each receipt was added (timestamp):
     // sorting first means groupBy keeps day-groups in most-recently-added order, and the
@@ -119,10 +132,10 @@ fun DashboardScreen(
             .groupBy { normalizeReceiptDate(it.date) ?: "Unknown Date" }
     }
 
-    // Category Breakdown for Chart
-    val categoryBreakdown = remember(receipts) {
+    // Category Breakdown for Chart (current month, matching the headline figure)
+    val categoryBreakdown = remember(monthReceipts) {
         val breakdown = mutableMapOf<String, Double>()
-        receipts.forEach { receipt ->
+        monthReceipts.forEach { receipt ->
             val amt = receipt.totalAmount ?: 0.0
             breakdown[receipt.category] = (breakdown[receipt.category] ?: 0.0) + amt
         }
@@ -198,13 +211,13 @@ fun DashboardScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Total Spending",
+                            text = "This Month",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = formatter.format(totalSpent),
+                            text = formatter.format(monthTotal),
                             fontSize = 32.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -231,11 +244,37 @@ fun DashboardScreen(
                     }
 
                     // Mini Donut Chart
-                    if (totalSpent > 0) {
+                    if (monthTotal > 0) {
                         DonutChart(
                             breakdown = categoryBreakdown,
-                            total = totalSpent,
+                            total = monthTotal,
                             modifier = Modifier.size(100.dp)
+                        )
+                    }
+                }
+            }
+
+            // Monthly Totals
+            if (monthlyTotals.isNotEmpty()) {
+                Text(
+                    text = "Monthly Totals",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                )
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(monthlyTotals) { (month, total) ->
+                        MonthTotalCard(
+                            label = monthLabel(month),
+                            amount = formatter.format(total),
+                            highlighted = month == currentMonthKey
                         )
                     }
                 }
@@ -415,6 +454,73 @@ fun DonutChart(
                 topLeft = androidx.compose.ui.geometry.Offset(topLeftX, topLeftY),
                 size = Size(chartSize, chartSize),
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+    }
+}
+
+/**
+ * Extracts the MM/yyyy month key from a normalized dd/MM/yyyy date, or null if the shape
+ * doesn't match.
+ */
+fun monthKeyOf(normalizedDate: String?): String? {
+    val parts = normalizedDate?.split("/") ?: return null
+    return if (parts.size == 3 && parts[1].length == 2 && parts[2].length == 4) {
+        "${parts[1]}/${parts[2]}"
+    } else null
+}
+
+/** Chronological sort value (yyyyMM) for an MM/yyyy month key. */
+fun monthSortValue(monthKey: String): Int {
+    val parts = monthKey.split("/")
+    val month = parts.getOrNull(0)?.toIntOrNull() ?: 0
+    val year = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    return year * 100 + month
+}
+
+/** Converts an MM/yyyy month key to a readable label such as "August 2026". */
+fun monthLabel(monthKey: String): String {
+    return try {
+        val parsed = SimpleDateFormat("MM/yyyy", Locale.getDefault()).parse(monthKey)
+        SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(parsed!!)
+    } catch (e: Exception) {
+        monthKey
+    }
+}
+
+@Composable
+fun MonthTotalCard(
+    label: String,
+    amount: String,
+    highlighted: Boolean
+) {
+    Card(
+        modifier = Modifier.width(150.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (highlighted) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = amount,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
