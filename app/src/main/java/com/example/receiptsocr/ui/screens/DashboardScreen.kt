@@ -100,6 +100,9 @@ fun DashboardScreen(
     val receipts by viewModel.receipts.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCategory by viewModel.selectedCategoryFilter.collectAsState()
+
+    // When a month is tapped in the Monthly Totals row, the receipt list is limited to it.
+    var selectedMonth by remember { mutableStateOf<String?>(null) }
     
     val formatter = DecimalFormat("€#,##0.00")
 
@@ -123,12 +126,19 @@ fun DashboardScreen(
             .sortedByDescending { (month, _) -> monthSortValue(month) }
     }
 
+    // Receipts shown in the list below, optionally narrowed to the month tapped in Monthly Totals.
+    val displayedReceipts = remember(receipts, selectedMonth) {
+        val month = selectedMonth
+        if (month == null) receipts
+        else receipts.filter { monthKeyOf(normalizeReceiptDate(it.date)) == month }
+    }
+
     // Group receipts by day. Ordering is by when each receipt was added (timestamp):
     // sorting first means groupBy keeps day-groups in most-recently-added order, and the
     // receipts within a day stay newest-first — so a freshly added receipt is always at the top,
     // even if its printed date is old or was misread by the OCR.
-    val receiptsByDay = remember(receipts) {
-        receipts.sortedByDescending { it.timestamp }
+    val receiptsByDay = remember(displayedReceipts) {
+        displayedReceipts.sortedByDescending { it.timestamp }
             .groupBy { normalizeReceiptDate(it.date) ?: "Unknown Date" }
     }
 
@@ -274,7 +284,11 @@ fun DashboardScreen(
                         MonthTotalCard(
                             label = monthLabel(month),
                             amount = formatter.format(total),
-                            highlighted = month == currentMonthKey
+                            highlighted = month == currentMonthKey,
+                            selected = month == selectedMonth,
+                            onClick = {
+                                selectedMonth = if (selectedMonth == month) null else month
+                            }
                         )
                     }
                 }
@@ -338,10 +352,35 @@ fun DashboardScreen(
                 }
             }
 
+            // Active month filter indicator
+            selectedMonth?.let { month ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Showing ${monthLabel(month)}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Clear",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { selectedMonth = null }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Receipts List
-            if (receipts.isEmpty()) {
+            if (displayedReceipts.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -360,7 +399,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (searchQuery.isNotEmpty() || selectedCategory != null) "No matching receipts found" else "No receipts scanned yet",
+                            text = if (searchQuery.isNotEmpty() || selectedCategory != null || selectedMonth != null) "No matching receipts found" else "No receipts scanned yet",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
@@ -368,7 +407,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (searchQuery.isNotEmpty() || selectedCategory != null) "Try adjusting your search criteria" else "Tap the '+' button to scan your first receipt",
+                            text = if (searchQuery.isNotEmpty() || selectedCategory != null || selectedMonth != null) "Try adjusting your search criteria" else "Tap the '+' button to scan your first receipt",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
                             textAlign = TextAlign.Center
@@ -492,11 +531,18 @@ fun monthLabel(monthKey: String): String {
 fun MonthTotalCard(
     label: String,
     amount: String,
-    highlighted: Boolean
+    highlighted: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.width(150.dp),
+        modifier = Modifier
+            .width(150.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
+        border = if (selected) {
+            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else null,
         colors = CardDefaults.cardColors(
             containerColor = if (highlighted) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
