@@ -65,7 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.receiptsocr.data.model.ReceiptEntity
+import com.example.receiptsocr.data.model.ReceiptItem
 import com.example.receiptsocr.ui.viewmodel.ReceiptViewModel
+import kotlinx.serialization.json.Json
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -87,6 +89,16 @@ fun DetailScreen(
     val receipt = activeReceipt!!
     var rawTextExpanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+
+    // Products detected by the model, decoded from the receipt's serialized item list.
+    val items = remember(receipt.id, receipt.itemsJson) {
+        try {
+            Json { ignoreUnknownKeys = true }
+                .decodeFromString<List<ReceiptItem>>(receipt.itemsJson)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -229,6 +241,61 @@ fun DetailScreen(
                             borderWidth = 1.dp
                         )
                     )
+                }
+            }
+
+            // Detected Products
+            if (items.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Products", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        "${items.size} item${if (items.size == 1) "" else "s"}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        items.forEach { item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = item.name,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 12.dp)
+                                )
+                                if (item.price > 0.0) {
+                                    Text(
+                                        text = "${receipt.currency}${"%.2f".format(item.price)}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
