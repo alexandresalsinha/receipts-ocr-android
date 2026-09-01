@@ -21,6 +21,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +40,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -54,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.contentDescription
@@ -74,8 +80,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import coil.compose.AsyncImage
 import com.example.receiptsocr.domain.ReceiptParser
 import com.example.receiptsocr.ui.viewmodel.ReceiptViewModel
+import com.example.receiptsocr.util.ReceiptImageGlue
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -126,6 +134,23 @@ fun CameraScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.processImageUri(context, it) }
+    }
+
+    // Ordered close-up segments captured so far in this scroll-and-tap session.
+    var capturedSegments by remember { mutableStateOf<List<File>>(emptyList()) }
+    val captureDir = remember { File(context.cacheDir, "receipt_capture") }
+
+    // Clear any segment files orphaned by a killed previous capture session.
+    LaunchedEffect(Unit) {
+        captureDir.mkdirs()
+        captureDir.listFiles()?.forEach { it.delete() }
+    }
+
+    // If the user backs out without tapping Done, discard the not-yet-submitted segments.
+    DisposableEffect(Unit) {
+        onDispose {
+            capturedSegments.forEach { it.delete() }
+        }
     }
 
     // CameraX parameters
@@ -238,7 +263,11 @@ fun CameraScreen(
                             .border(BorderStroke(2.dp, Color.White.copy(alpha = 0.6f)), RoundedCornerShape(20.dp))
                     ) {
                         Text(
-                            text = "Align receipt inside frame",
+                            text = if (capturedSegments.isEmpty()) {
+                                "Hold the phone close, tap to capture the top of the receipt"
+                            } else {
+                                "Slide down, tap to capture the next section — tap ✓ when done"
+                            },
                             color = Color.White.copy(alpha = 0.8f),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
@@ -299,6 +328,50 @@ fun CameraScreen(
                     .padding(vertical = 24.dp, horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Thumbnail strip of segments captured so far this session
+                if (capturedSegments.isNotEmpty()) {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(capturedSegments) { file ->
+                            val isLast = file == capturedSegments.last()
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)), RoundedCornerShape(8.dp))
+                            ) {
+                                AsyncImage(
+                                    model = file,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                if (isLast) {
+                                    IconButton(
+                                        onClick = {
+                                            file.delete()
+                                            capturedSegments = capturedSegments.dropLast(1)
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(20.dp)
+                                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Remove last capture",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -314,21 +387,43 @@ fun CameraScreen(
                         Text("Import Gallery", fontSize = 12.sp)
                     }
 
-                    // Shutter Button
+                    // Shutter Button — captures one close-up segment and adds it to the session
                     if (hasCameraPermission) {
+                        val atCap = capturedSegments.size >= ReceiptImageGlue.MAX_SEGMENTS
                         Box(
                             modifier = Modifier
                                 .size(72.dp)
                                 .clip(CircleShape)
-                                .background(Color.White)
+                                .background(if (atCap) Color.Gray else Color.White)
                                 .border(BorderStroke(4.dp, Color.Black), CircleShape)
                                 .clip(CircleShape)
-                                .clickable {
-                                    takePhoto(context, imageCapture, cameraExecutor) { uri ->
-                                        viewModel.processImageUri(context, uri)
+                                .clickable(enabled = !atCap) {
+                                    val segmentFile = File(
+                                        captureDir,
+                                        "segment_${System.currentTimeMillis()}_${capturedSegments.size}.jpg"
+                                    )
+                                    takePhoto(context, imageCapture, cameraExecutor, segmentFile) { file ->
+                                        capturedSegments = capturedSegments + file
                                     }
                                 }
                         )
+                    }
+
+                    // Done Button — glues the captured segments and sends them for extraction
+                    if (capturedSegments.isNotEmpty()) {
+                        Button(
+                            onClick = {
+                                val segments = capturedSegments
+                                capturedSegments = emptyList()
+                                viewModel.processCapturedSegments(context, segments)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Done (${capturedSegments.size})", fontSize = 12.sp)
+                        }
                     }
 
                     // Mock Scan Button (Crucial for Emulator Testing!)
@@ -427,23 +522,18 @@ private fun takePhoto(
     context: Context,
     imageCapture: ImageCapture,
     executor: ExecutorService,
-    onPhotoCaptured: (Uri) -> Unit
+    outputFile: File,
+    onPhotoCaptured: (File) -> Unit
 ) {
-    val photoFile = File(
-        context.cacheDir,
-        "captured_receipt_${System.currentTimeMillis()}.jpg"
-    )
-    
-    val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-    
+    val outputOptions = ImageCapture.OutputFileOptions.Builder(outputFile).build()
+
     imageCapture.takePicture(
         outputOptions,
         executor,
         object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                val savedUri = Uri.fromFile(photoFile)
                 ContextCompat.getMainExecutor(context).execute {
-                    onPhotoCaptured(savedUri)
+                    onPhotoCaptured(outputFile)
                 }
             }
 

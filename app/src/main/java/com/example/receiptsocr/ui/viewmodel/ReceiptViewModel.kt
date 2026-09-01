@@ -8,15 +8,18 @@ import androidx.lifecycle.viewModelScope
 import com.example.receiptsocr.data.DataRepository
 import com.example.receiptsocr.data.model.ReceiptEntity
 import com.example.receiptsocr.data.remote.GeminiClient
+import com.example.receiptsocr.util.ReceiptImageGlue
 import com.example.receiptsocr.util.normalizeReceiptDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -116,36 +119,64 @@ class ReceiptViewModel(private val repository: DataRepository) : ViewModel() {
         ocrError.value = null
 
         viewModelScope.launch {
-            try {
-                // Read the image bytes and copy it to app local storage so it can be displayed later.
-                val imageBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                if (imageBytes == null || imageBytes.isEmpty()) {
-                    ocrError.value = "Failed to load the selected image. Please try again."
-                    isProcessing.value = false
-                    return@launch
-                }
-
-                val persistedImagePath = copyImageToInternalStorage(context, imageBytes)
-
-                // Send the photo to the Gemini vision model and ask it to read the receipt.
-                val extraction = GeminiClient.extractReceipt(imageBytes)
-
-                activeReceipt.value = ReceiptEntity(
-                    id = UUID.randomUUID().toString(),
-                    merchantName = extraction.merchantName ?: "Unknown Merchant",
-                    date = normalizeReceiptDate(extraction.date) ?: todayFormatted(),
-                    totalAmount = extraction.totalAmount,
-                    category = extraction.category ?: "Miscellaneous",
-                    itemsJson = Json.encodeToString(extraction.items),
-                    rawText = extraction.rawResponse,
-                    imagePath = persistedImagePath,
-                    timestamp = System.currentTimeMillis()
-                )
+            // Read the image bytes and copy it to app local storage so it can be displayed later.
+            val imageBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (imageBytes == null || imageBytes.isEmpty()) {
+                ocrError.value = "Failed to load the selected image. Please try again."
                 isProcessing.value = false
-            } catch (e: Exception) {
-                ocrError.value = "Could not read the receipt: ${e.localizedMessage ?: "Unknown error"}"
-                isProcessing.value = false
+                return@launch
             }
+            processImageBytes(context, imageBytes)
+        }
+    }
+
+    /**
+     * Glues a guided scroll-and-tap sequence of close-up receipt-segment photos into one tall
+     * composite image, then runs it through the normal extraction pipeline. [segmentFiles] are
+     * deleted once combined, regardless of outcome, since they're pure intermediates.
+     */
+    fun processCapturedSegments(context: Context, segmentFiles: List<File>) {
+        if (segmentFiles.isEmpty()) return
+        isProcessing.value = true
+        ocrError.value = null
+
+        viewModelScope.launch {
+            try {
+                val imageBytes = withContext(Dispatchers.Default) {
+                    ReceiptImageGlue.glueSegments(segmentFiles)
+                }
+                processImageBytes(context, imageBytes)
+            } catch (e: Exception) {
+                ocrError.value = "Could not combine the captured photos: ${e.localizedMessage ?: "Unknown error"}"
+                isProcessing.value = false
+            } finally {
+                segmentFiles.forEach { it.delete() }
+            }
+        }
+    }
+
+    private suspend fun processImageBytes(context: Context, imageBytes: ByteArray) {
+        try {
+            val persistedImagePath = copyImageToInternalStorage(context, imageBytes)
+
+            // Send the photo to the Gemini vision model and ask it to read the receipt.
+            val extraction = GeminiClient.extractReceipt(imageBytes)
+
+            activeReceipt.value = ReceiptEntity(
+                id = UUID.randomUUID().toString(),
+                merchantName = extraction.merchantName ?: "Unknown Merchant",
+                date = normalizeReceiptDate(extraction.date) ?: todayFormatted(),
+                totalAmount = extraction.totalAmount,
+                category = extraction.category ?: "Miscellaneous",
+                itemsJson = Json.encodeToString(extraction.items),
+                rawText = extraction.rawResponse,
+                imagePath = persistedImagePath,
+                timestamp = System.currentTimeMillis()
+            )
+            isProcessing.value = false
+        } catch (e: Exception) {
+            ocrError.value = "Could not read the receipt: ${e.localizedMessage ?: "Unknown error"}"
+            isProcessing.value = false
         }
     }
 

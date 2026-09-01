@@ -58,8 +58,12 @@ object GeminiClient {
     private const val ENDPOINT =
         "https://generativelanguage.googleapis.com/v1beta/models/$MODEL:generateContent"
 
-    // Keep the uploaded image small enough for a fast, cheap request while staying legible.
-    private const val MAX_IMAGE_DIMENSION = 1536
+    // Cap by width, since that's what determines legible text density for a receipt photo
+    // regardless of its aspect ratio (a tall glued multi-segment composite must not be shrunk
+    // by its height). MAX_IMAGE_HEIGHT is a much higher sanity ceiling that only guards against
+    // OOM/oversized payloads for pathologically tall composites.
+    private const val MAX_IMAGE_WIDTH = 1400
+    private const val MAX_IMAGE_HEIGHT = 20_000
     private const val JPEG_QUALITY = 85
     private const val TIMEOUT_MS = 60_000
 
@@ -205,7 +209,8 @@ object GeminiClient {
     }
 
     private fun encodeScaledJpeg(imageBytes: ByteArray): String {
-        val original = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        val decodeOptions = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }
+        val original = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, decodeOptions)
             ?: throw IOException("Could not decode the captured image.")
 
         val scaled = scaleDown(original)
@@ -218,11 +223,21 @@ object GeminiClient {
     }
 
     private fun scaleDown(bitmap: Bitmap): Bitmap {
-        val largest = maxOf(bitmap.width, bitmap.height)
-        if (largest <= MAX_IMAGE_DIMENSION) return bitmap
-        val ratio = MAX_IMAGE_DIMENSION.toFloat() / largest
-        val width = (bitmap.width * ratio).toInt().coerceAtLeast(1)
-        val height = (bitmap.height * ratio).toInt().coerceAtLeast(1)
+        var width = bitmap.width
+        var height = bitmap.height
+
+        if (width > MAX_IMAGE_WIDTH) {
+            val ratio = MAX_IMAGE_WIDTH.toFloat() / width
+            width = MAX_IMAGE_WIDTH
+            height = (height * ratio).toInt().coerceAtLeast(1)
+        }
+        if (height > MAX_IMAGE_HEIGHT) {
+            val ratio = MAX_IMAGE_HEIGHT.toFloat() / height
+            height = MAX_IMAGE_HEIGHT
+            width = (width * ratio).toInt().coerceAtLeast(1)
+        }
+
+        if (width == bitmap.width && height == bitmap.height) return bitmap
         return Bitmap.createScaledBitmap(bitmap, width, height, true)
     }
 }
