@@ -69,7 +69,7 @@ object GeminiClient {
 
     private val VALID_CATEGORIES = listOf(
         "Groceries", "Food & Dining", "Travel", "Shopping", "Utilities",
-        "Fuel", "Health", "Entertainment", "Electronics", "Clothing", "Home", "Miscellaneous"
+        "Fuel", "Health", "Entertainment", "Electronics", "Clothing", "Home", "Habits", "Miscellaneous"
     )
 
     private val json = Json { ignoreUnknownKeys = true }

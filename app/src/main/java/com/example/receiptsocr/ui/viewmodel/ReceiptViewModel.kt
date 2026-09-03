@@ -76,6 +76,24 @@ class ReceiptViewModel(private val repository: DataRepository) : ViewModel() {
         activeReceipt.value = receipt
     }
 
+    /**
+     * Starts a blank receipt for manual entry, so the user can fill in the details themselves
+     * on the Detail screen instead of scanning a photo.
+     */
+    fun createManualReceipt() {
+        activeReceipt.value = ReceiptEntity(
+            id = UUID.randomUUID().toString(),
+            merchantName = "",
+            date = todayFormatted(),
+            totalAmount = null,
+            category = "Miscellaneous",
+            itemsJson = Json.encodeToString(emptyList<com.example.receiptsocr.data.model.ReceiptItem>()),
+            rawText = "",
+            imagePath = null,
+            timestamp = System.currentTimeMillis()
+        )
+    }
+
     fun updateActiveReceiptMerchant(name: String) {
         activeReceipt.value = activeReceipt.value?.copy(merchantName = name)
     }

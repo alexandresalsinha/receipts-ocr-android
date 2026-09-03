@@ -83,6 +83,7 @@ val CATEGORY_COLORS = mapOf(
     "Electronics" to Color(0xFF3F51B5),
     "Clothing" to Color(0xFF795548),
     "Home" to Color(0xFF827717),
+    "Habits" to Color(0xFF00BCD4),
     "Miscellaneous" to Color(0xFF757575)
 )
 
