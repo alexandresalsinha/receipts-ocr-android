@@ -42,8 +42,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -81,7 +81,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
-import com.example.receiptsocr.domain.ReceiptParser
 import com.example.receiptsocr.ui.viewmodel.ReceiptViewModel
 import com.example.receiptsocr.util.ReceiptImageGlue
 import java.io.File
@@ -426,32 +425,21 @@ fun CameraScreen(
                         }
                     }
 
-                    // Mock Scan Button (Crucial for Emulator Testing!)
+                    // Add Manually Button — skips scanning and opens a blank receipt for editing
                     Button(
-                        onClick = {
-                            viewModel.isProcessing.value = true
-                            viewModel.clearOcrError()
-                            // Simulate a small network / analysis delay
-                            cameraExecutor.execute {
-                                Thread.sleep(1200)
-                                val mockOcrText = getMockReceiptText()
-                                val parsed = ReceiptParser.parse(mockOcrText, null)
-                                viewModel.activeReceipt.value = parsed
-                                viewModel.isProcessing.value = false
-                            }
-                        },
+                        onClick = { viewModel.createManualReceipt() },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Icon(Icons.Default.Edit, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Mock Scan", fontSize = 12.sp)
+                        Text("Add Manually", fontSize = 12.sp)
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Tip: Tap 'Mock Scan' to simulate scanning a receipt on the emulator.",
+                    text = "Tip: Tap 'Add Manually' to enter a receipt's details by hand.",
                     color = Color.LightGray.copy(alpha = 0.6f),
                     fontSize = 11.sp,
                     textAlign = TextAlign.Center
@@ -544,75 +532,4 @@ private fun takePhoto(
             }
         }
     )
-}
-
-// Generate a dummy receipt text for emulator testing
-private fun getMockReceiptText(): String {
-    val options = listOf(
-        """
-            WHOLE FOODS MARKET
-            365 GROCERY INC
-            STORE #10293
-            
-            ORGANIC STRAWBERRIES   $4.99
-            WHOLE MILK 1GAL        $3.89
-            BROWN EGGS 12PK        $4.50
-            WHOLE WHEAT BREAD      $2.49
-            ORGANIC COFFEE BEANS   $12.99
-            
-            SUBTOTAL               $28.86
-            SALES TAX (8.00%)      $2.31
-            TOTAL DUE              $31.17
-            
-            PAID WITH DEBIT CARD
-            CHANGE DUE             $0.00
-            
-            THANK YOU FOR SHOPPING WITH US!
-        """.trimIndent(),
-        """
-            MCDONALD'S RESTAURANT #4992
-            120 BROADWAY ST, NEW YORK
-            
-            1 BIG MAC MEAL         $8.99
-            1 DOUBLE CHEESEBURGER  $2.79
-            1 LARGE CHOCOLATE SHAKE $3.50
-            
-            SUBTOTAL               $15.28
-            TAX (8.875%)           $1.36
-            TOTAL                  $16.64
-            
-            CASH TENDERED          $20.00
-            CHANGE RETURNED        $3.36
-        """.trimIndent(),
-        """
-            YELLOW CAB CO.
-            TRANSACTION ID: 948274
-            
-            BASE FARE              $3.50
-            DISTANCE FARE          $12.20
-            TIP (15%)              $2.35
-            
-            TOTAL PAID             $18.05
-            
-            CHARGE TO VISA ***********4829
-            
-            DRIVE SAFE!
-        """.trimIndent(),
-        """
-            BEST BUY #481
-            555 ELECTRONICS RD
-            
-            USB-C CHARGING CABLE   $14.99
-            BLUETOOTH HEADPHONES   $89.99
-            
-            SUBTOTAL               $104.98
-            TAX                    $8.40
-            TOTAL DUE              $113.38
-            
-            PAID: DEBIT CARD
-        """.trimIndent()
-    )
-    
-    // Return a random mock receipt text to simulate variety
-    return options.random()
 }
