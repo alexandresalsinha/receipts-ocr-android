@@ -28,6 +28,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -324,20 +325,20 @@ fun CameraScreen(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(vertical = 24.dp, horizontal = 16.dp),
+                    .padding(top = 12.dp, bottom = 12.dp, start = 8.dp, end = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Thumbnail strip of segments captured so far this session
                 if (capturedSegments.isNotEmpty()) {
                     LazyRow(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(capturedSegments) { file ->
                             val isLast = file == capturedSegments.last()
                             Box(
                                 modifier = Modifier
-                                    .size(56.dp)
+                                    .size(48.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)), RoundedCornerShape(8.dp))
                             ) {
@@ -379,11 +380,12 @@ fun CameraScreen(
                     // Gallery Button
                     OutlinedButton(
                         onClick = { galleryLauncher.launch("image/*") },
-                        border = BorderStroke(1.5.dp, Color.White),
+                        border = BorderStroke(1.dp, Color.White),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        Text("Import Gallery", fontSize = 12.sp)
+                        Text("Gallery", fontSize = 12.sp)
                     }
 
                     // Shutter Button — captures one close-up segment and adds it to the session
@@ -391,7 +393,7 @@ fun CameraScreen(
                         val atCap = capturedSegments.size >= ReceiptImageGlue.MAX_SEGMENTS
                         Box(
                             modifier = Modifier
-                                .size(72.dp)
+                                .size(64.dp)
                                 .clip(CircleShape)
                                 .background(if (atCap) Color.Gray else Color.White)
                                 .border(BorderStroke(4.dp, Color.Black), CircleShape)
@@ -417,11 +419,12 @@ fun CameraScreen(
                                 viewModel.processCapturedSegments(context, segments)
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                         ) {
-                            Icon(Icons.Default.Check, contentDescription = null)
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Done (${capturedSegments.size})", fontSize = 12.sp)
+                            Text("Done", fontSize = 12.sp)
                         }
                     }
 
@@ -429,19 +432,20 @@ fun CameraScreen(
                     Button(
                         onClick = { viewModel.createManualReceipt() },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        Icon(Icons.Default.Edit, contentDescription = null)
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Add Manually", fontSize = 12.sp)
+                        Text("Manual", fontSize = 12.sp)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Tip: Tap 'Add Manually' to enter a receipt's details by hand.",
                     color = Color.LightGray.copy(alpha = 0.6f),
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     textAlign = TextAlign.Center
                 )
             }
