@@ -32,12 +32,20 @@ fun MainNavigation() {
 
     NavDisplay(
         backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
+        onBack = {
+            if (backStack.lastOrNull() == Detail) {
+                receiptViewModel.setActiveReceipt(null)
+            }
+            backStack.removeLastOrNull()
+        },
         entryProvider = entryProvider {
             entry<Dashboard> {
                 DashboardScreen(
                     viewModel = receiptViewModel,
-                    onScanClick = { backStack.add(Camera) },
+                    onScanClick = {
+                        receiptViewModel.setActiveReceipt(null)
+                        backStack.add(Camera)
+                    },
                     onCalendarClick = { backStack.add(Calendar) },
                     onReceiptClick = { receipt ->
                         receiptViewModel.setActiveReceipt(receipt)
@@ -69,7 +77,10 @@ fun MainNavigation() {
             entry<Detail> {
                 DetailScreen(
                     viewModel = receiptViewModel,
-                    onBackClick = { backStack.removeLastOrNull() }
+                    onBackClick = {
+                        receiptViewModel.setActiveReceipt(null)
+                        backStack.removeLastOrNull()
+                    }
                 )
             }
         }
