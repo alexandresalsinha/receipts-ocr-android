@@ -115,7 +115,9 @@ fun DashboardScreen(
 
     // Current month total. Normalized dates are dd/MM/yyyy, so the month key is MM/yyyy.
     val currentMonthKey = remember { SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(java.util.Date()) }
-    val monthReceipts = receipts.filter { monthKeyOf(normalizeReceiptDate(it.date)) == currentMonthKey }
+    val monthReceipts = remember(receipts, selectedMonth) {
+        receipts.filter { monthKeyOf(normalizeReceiptDate(it.date)) == (selectedMonth ?: currentMonthKey) }
+    }
     val monthTotal = monthReceipts.sumOf { it.totalAmount ?: 0.0 }
 
     // Totals per month, most recent first, for the "Monthly Totals" section.
@@ -227,7 +229,7 @@ fun DashboardScreen(
                     ) {
                         Column {
                             Text(
-                                text = "This Month",
+                                text = selectedMonth?.let { monthLabel(it) } ?: "This Month",
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                             )
