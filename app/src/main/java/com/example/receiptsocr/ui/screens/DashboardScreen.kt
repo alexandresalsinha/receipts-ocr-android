@@ -136,13 +136,14 @@ fun DashboardScreen(
         else receipts.filter { monthKeyOf(normalizeReceiptDate(it.date)) == month }
     }
 
-    // Group receipts by day. Ordering is by when each receipt was added (timestamp):
-    // sorting first means groupBy keeps day-groups in most-recently-added order, and the
-    // receipts within a day stay newest-first — so a freshly added receipt is always at the top,
-    // even if its printed date is old or was misread by the OCR.
+    // Group receipts by day, day-groups ordered newest date first; receipts within a day
+    // stay ordered by when they were added (newest first).
     val receiptsByDay = remember(displayedReceipts) {
         displayedReceipts.sortedByDescending { it.timestamp }
             .groupBy { normalizeReceiptDate(it.date) ?: "Unknown Date" }
+            .toList()
+            .sortedByDescending { (date, _) -> daySortValue(date) }
+            .toMap()
     }
 
     // Category Breakdown for Chart (current month, matching the headline figure)
@@ -530,6 +531,16 @@ fun monthSortValue(monthKey: String): Int {
     val month = parts.getOrNull(0)?.toIntOrNull() ?: 0
     val year = parts.getOrNull(1)?.toIntOrNull() ?: 0
     return year * 100 + month
+}
+
+/** Chronological sort value (yyyyMMdd) for a dd/MM/yyyy day key, or 0 for an unrecognized key. */
+fun daySortValue(dayKey: String): Int {
+    val parts = dayKey.split("/")
+    if (parts.size != 3) return 0
+    val day = parts.getOrNull(0)?.toIntOrNull() ?: return 0
+    val month = parts.getOrNull(1)?.toIntOrNull() ?: return 0
+    val year = parts.getOrNull(2)?.toIntOrNull() ?: return 0
+    return (year * 10000) + (month * 100) + day
 }
 
 /** Converts an MM/yyyy month key to a readable label such as "August 2026". */
